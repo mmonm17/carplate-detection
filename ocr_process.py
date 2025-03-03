@@ -13,7 +13,6 @@ class OCRProcess(multiprocessing.Process):
         self.log_queue = log_queue
         self.model = model
         self.batch_size = batch_size
-        self.log_queue.put(f"Process {self.process_id} initialized")
 
     def get_plate(self, boxes, image,reader):
         x_min, y_min, x_max, y_max = map(round, boxes)
@@ -40,7 +39,6 @@ class OCRProcess(multiprocessing.Process):
 
     def run(self):
         reader = ocr.Reader(['en'])
-        self.log_queue.put(f"Process {self.process_id} started")
         
         for i in range(0, len(self.process_dir), self.batch_size):
             batch_dir = self.process_dir[i:i + self.batch_size]
