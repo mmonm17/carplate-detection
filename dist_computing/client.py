@@ -84,7 +84,7 @@ def main():
                     res2 = res2.iloc[:,:2]
 
                     res = pd.concat([res1, res2], axis=0, ignore_index=True).reset_index(drop=True)
-                    recog_count = len(res) - len(res1[(res["1"] == "N/A") | (res["1"].isnull())])
+                    recog_count = len(res) - len(res[(res["1"] == "N/A") | (res["1"].isnull())])
 
                     stats = f"Total Number of Images: {len(res)}\n"
                     stats += f"Recognized Plates: {recog_count}\n"
