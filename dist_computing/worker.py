@@ -4,25 +4,27 @@ import easyocr as ocr
 from ultralytics import YOLO
 import cv2
 import os
-import numpy as np
 import io
 from PIL import Image
+import serpent
 
 @Pyro4.expose
 class Worker(object):
     def __init__(self):
-        self.id = 0
         self.model = YOLO("best.pt")
         self.reader = ocr.Reader(['en'])
+        self.path_to_images = "/home/monm/mp/images/"
         self.images = []
         self.filenames = []
         return
     
-    def receive_image(self, images, filenames):
+    def receive_image(self, img_b64, filename):
         try:
-            self.images = images
-            self.filenames = filenames
-            return f"Images received."
+            img_bytes = serpent.tobytes(img_b64)
+            img = Image.open(io.BytesIO(img_bytes))
+            self.filenames.append(filename)
+            img.save(self.path + filename)
+            return f"Image received."
         except Exception as e:
             return f"Error receiving image: {e}"
     
@@ -57,13 +59,12 @@ class Worker(object):
         return results
     
     def run(self):
-        path = "/home/monm/mp/images/"
-        img_files = os.listdir(path)
+        img_files = os.listdir(self.path_to_images)
         if len(img_files) == 0:
             print("No images found in the directory.")
             return
         
-        img_dir = [path + x for x in img_files]
+        img_dir = [self.path_to_images + x for x in img_files]
         pred = self.model(img_dir, stream=True)
         results_seq = []
         print(img_files, img_dir)
