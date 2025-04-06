@@ -15,28 +15,19 @@ class Server(object):
     def set_workers(self, workers):
         try:
             if workers < 1 or workers > 2:
-                return f"Invalid number of workers. Must be between 1 and 3."
+                return f"Invalid number of workers. Must be either 1 or 2."
             else:
                 self.workers = workers
                 return f"Number of workers set to {workers}"
         except Exception as e:
             return f"Error setting workers: {e}"
-        
-    def set_directory(self, directory):
+
+    def set_images(self, directory):
         try:
             if not os.path.exists(directory):
-                return "Directory does not exist."
-            else:
-                self.directory = directory
-                return f"Directory set to {directory}"
-        except Exception as e:
-            return f"Error setting directory: {e}"
-
-    def set_images(self):
-        try:
-            if not os.path.exists(self.directory):
                 return "Directory does not exist. Please set a valid directory."
             else:
+                self.directory = directory
                 img_files = os.listdir(self.directory)
                 img_dir = [os.path.join(self.directory, x) for x in img_files]
                 if len(img_dir) == 0:

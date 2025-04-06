@@ -5,10 +5,9 @@ def print_commands():
     print("[1] Set Num of Workers")
     print("[2] Get Workers")
     print("[3] Set Image Directory")
-    print("[4] Set Image Files")
-    print("[5] Send Image Files to Nodes")
-    print("[6] Run Plate Recognition")
-    print("[7] Exit")
+    print("[4] Send Image Files to Workers")
+    print("[5] Run Plate Recognition")
+    print("[6] Exit")
     print("Please enter a command: ", end="")
 
 def main():
@@ -20,10 +19,10 @@ def main():
         print_commands()
         try:
             command = int(input())
-            if command < 1 or command > 7:
+            if command < 1 or command > 5:
                 print("Invalid command. Please try again.")
                 continue
-            if command == 7:
+            if command == 6:
                 print("Exiting...")
                 break
             if command == 1: # Set Num of Workers
@@ -42,16 +41,13 @@ def main():
                 print(res)
             elif command == 3: # Set Image Directory
                 directory = input("Enter the image directory: ")
-                res = server.set_directory(directory)
+                res = server.set_images(directory)
                 print(res)
-            elif command == 4: # Set Image Files
-                res = server.set_images()
-                print(res)
-            elif command == 5: # Send Image Files to Workers
-                print("Please wait, this may take a while...")
+            elif command == 4: # Send Image Files to Workers
+                print("Sending images to workers. Please wait, this may take a while...")
                 res = server.send_image_files_to_workers()
                 print(res)
-            elif command == 6: # Run Plate Recognition
+            elif command == 5: # Run Plate Recognition
                 res = server.call_workers()
                 print(res)
         except ValueError:
