@@ -1,5 +1,8 @@
 import Pyro4
 import os
+import numpy as np
+from PIL import Image
+import io
 
 @Pyro4.expose
 class Server(object):
@@ -47,7 +50,7 @@ class Server(object):
         except Exception as e:
             return f"Error getting images from {self.directory}: {e}"
         
-    def send_image_files_to_nodes(self):
+    def send_image_files_to_workers(self):
         if self.workers == 0:
             return "No workers set."
         if self.workers < 1 or self.workers > 2:
@@ -63,9 +66,20 @@ class Server(object):
         for i in range(self.workers):
             start = i * (len_dir // self.workers)
             end = (i + 1) * (len_dir // self.workers) if i != self.workers - 1 else len_dir
-            # worker = self.worker_proxies[i]
-            # worker.set_image_files(self.image_directories[start:end])
-            print(f"Worker {i+1} set with images from {start} to {end}.")
+
+            batch_img_arr = []
+            filenames = []
+            for each_img_dir in self.image_directories[start:end]:
+                try:
+                    print(f"Reading {each_img_dir}")
+                    img = Image.open(each_img_dir)
+                    img_arr = np.array(img)
+                    batch_img_arr.append(img_arr)
+                    filenames.append(each_img_dir.split("/")[-1])
+                except Exception as e:
+                    print(f"Error reading image {each_img_dir}: {e}")
+                    continue
+            self.worker_proxies[i].receive_image(batch_img_arr, filenames)
         return f"Image files sent to workers."
         
     def get_workers(self):

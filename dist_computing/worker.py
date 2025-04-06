@@ -4,13 +4,27 @@ import easyocr as ocr
 from ultralytics import YOLO
 import cv2
 import os
+import numpy as np
+import io
+from PIL import Image
 
 @Pyro4.expose
 class Worker(object):
     def __init__(self):
+        self.id = 0
         self.model = YOLO("best.pt")
         self.reader = ocr.Reader(['en'])
+        self.images = []
+        self.filenames = []
         return
+    
+    def receive_image(self, images, filenames):
+        try:
+            self.images = images
+            self.filenames = filenames
+            return f"Images received."
+        except Exception as e:
+            return f"Error receiving image: {e}"
     
     def set_model(self, model):
         try:
@@ -43,8 +57,12 @@ class Worker(object):
         return results
     
     def run(self):
-        path = "/home/monm/mp/test/"
+        path = "/home/monm/mp/images/"
         img_files = os.listdir(path)
+        if len(img_files) == 0:
+            print("No images found in the directory.")
+            return
+        
         img_dir = [path + x for x in img_files]
         pred = self.model(img_dir, stream=True)
         results_seq = []

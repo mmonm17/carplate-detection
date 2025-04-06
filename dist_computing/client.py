@@ -47,14 +47,18 @@ def main():
             elif command == 4: # Set Image Files
                 res = server.set_images()
                 print(res)
-            elif command == 5: # Send Image Files to Nodes
-                res = server.send_image_files_to_nodes()
+            elif command == 5: # Send Image Files to Workers
+                print("Please wait, this may take a while...")
+                res = server.send_image_files_to_workers()
                 print(res)
             elif command == 6: # Run Plate Recognition
                 res = server.call_workers()
                 print(res)
         except ValueError:
             print("Invalid input. Please enter a number.")
+            continue
+        except Exception as e:
+            print(f"An error occurred: {e}")
             continue
 
 if __name__ == "__main__":
