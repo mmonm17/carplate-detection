@@ -24,7 +24,7 @@ class Worker(object):
             img_bytes = serpent.tobytes(img_b64)
             img = Image.open(io.BytesIO(img_bytes))
             self.filenames.append(filename)
-            img.save(self.path + filename)
+            img.save(self.path_to_images + filename)
             print(f"Image {filename} received and saved.")
             return f"Image received."
         except Exception as e:
