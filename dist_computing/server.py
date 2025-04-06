@@ -2,7 +2,7 @@ import Pyro4
 import os
 from PIL import Image
 import io
-
+import multiprocessing
 @Pyro4.expose
 class Server(object):
     def __init__(self):
@@ -40,6 +40,21 @@ class Server(object):
         except Exception as e:
             return f"Error getting images from {self.directory}: {e}"
         
+    def sending_function(proxy, dir, start, end, i):
+        for each_img_dir in dir[start:end]:
+            try:
+                print(f"Reading {each_img_dir}")
+                img = Image.open(each_img_dir)
+                buffer = io.BytesIO()
+                img.save(buffer, format="PNG")
+                img_buffer = buffer.getvalue()
+                filename = each_img_dir.split("/")[-1]
+                res = proxy.receive_image(img_buffer, filename)
+                print(f"Worker {i+1}: {res}")
+            except Exception as e:
+                print(f"Error reading image {each_img_dir}: {e}")
+                continue
+        
     def send_image_files_to_workers(self):
         if self.workers == 0:
             return "No workers set."
@@ -53,23 +68,16 @@ class Server(object):
         print(f"Total Number of Images: {len_dir}")
         print(f"Number of Workers: {self.workers}")
 
+        processes = []
         for i in range(self.workers):
             start = i * (len_dir // self.workers)
             end = (i + 1) * (len_dir // self.workers) if i != self.workers - 1 else len_dir
-
-            for each_img_dir in self.image_directories[start:end]:
-                try:
-                    print(f"Reading {each_img_dir}")
-                    img = Image.open(each_img_dir)
-                    buffer = io.BytesIO()
-                    img.save(buffer, format="JPEG")
-                    img_buffer = buffer.getvalue()
-                    filename = each_img_dir.split("/")[-1]
-                    res = self.worker_proxies[i].receive_image(img_buffer, filename)
-                    print(f"Worker {i+1}: {res}")
-                except Exception as e:
-                    print(f"Error reading image {each_img_dir}: {e}")
-                    continue
+            p = multiprocessing.Process(target=self.sending_function, args=(self.worker_proxies[i], self.image_directories, start, end, i))
+            p.start()
+            processes.append(p)
+        
+        for p in processes:
+            p.join()
             
         return f"Image files sent to workers."
         
@@ -78,6 +86,7 @@ class Server(object):
             if self.workers == 0:
                 return "No workers set."
             ns = Pyro4.locateNS("10.2.12.33", 9090)
+            self.worker_proxies = []
 
             for i in range(self.workers):
                 try:
@@ -92,11 +101,20 @@ class Server(object):
         except Exception as e:
             return f"Error getting workers: {e}"
 
-    def call_workers(self):
+    def call_workers(self, batch_size):
         if len(self.worker_proxies) == 0:
             return "No workers available."
-        for worker in self.worker_proxies:
-            worker.run()
+        if batch_size <= 0:
+            return "Invalid batch size. Must be greater than 0."
+        
+        processes = []
+        for i in range(self.workers):
+            p = multiprocessing.Process(target=self.worker_proxies[i].predict, args=(batch_size,))
+            p.start()
+            processes.append(p)
+
+        for p in processes:
+            p.join()
     
 def main():
     daemon=Pyro4.Daemon(host="10.2.12.33")

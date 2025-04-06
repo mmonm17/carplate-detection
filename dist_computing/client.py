@@ -48,8 +48,14 @@ def main():
                 res = server.send_image_files_to_workers()
                 print(res)
             elif command == 5: # Run Plate Recognition
-                res = server.call_workers()
-                print(res)
+                try:
+                    batch_size = int(input("Enter the batch size: "))
+                    print("Running plate recognition. Please wait, this may take a while...")
+                    res = server.call_workers(batch_size)
+                    print(res)
+                except ValueError:
+                    print("Invalid input. Please enter a number.")
+                    continue
         except ValueError:
             print("Invalid input. Please enter a number.")
             continue

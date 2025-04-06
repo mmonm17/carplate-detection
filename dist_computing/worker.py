@@ -7,6 +7,7 @@ import os
 import io
 from PIL import Image
 import serpent
+import pandas as pd
 
 @Pyro4.expose
 class Worker(object):
@@ -60,34 +61,45 @@ class Worker(object):
             results.append(ocr_result[index][1])
         return results
     
-    def run(self):
+    def predict(self, batch_size):
         img_files = os.listdir(self.path_to_images)
         if len(img_files) == 0:
             print("No images found in the directory.")
             return
         
         img_dir = [self.path_to_images + x for x in img_files]
-        pred = self.model(img_dir, stream=True)
+
+        iters = len(img_dir) // batch_size
+
         results_seq = []
-        print(img_files, img_dir)
+        for i in range(iters):
+            start = i * batch_size
+            end = (i + 1) * batch_size if i != iters - 1 else len(img_dir)
+            img_dir_batch = img_dir[start:end]
+            pred = self.model(img_dir_batch, stream=True)
+            results = []
+            print(f"Image Index Start: {start}")
+            print(f"Image Index End: {end}")
 
-        for result, file_name, img in zip(pred, img_files, img_dir):
-            image = cv2.imread(img)
+            for result, file_name, img in zip(pred, img_files, img_dir):
+                image = cv2.imread(img)
 
-            if image is None:
-                print(f"Error reading image: {img}")
-                continue
-            try:
-                boxes = result.boxes.xyxy.cpu()[0].numpy().tolist()
-                ocr_results = self.get_plate(boxes, image)
-            except:
-                print(f"Error getting ocr from image: {img}")
-                ocr_results = ["N/A"]
-                
-            row = [file_name] + ocr_results
-            results_seq.append(row)
-            del image
-        print(results_seq)
+                if image is None:
+                    print(f"Error reading image: {img}")
+                    continue
+                try:
+                    boxes = result.boxes.xyxy.cpu()[0].numpy().tolist()
+                    ocr_results = self.get_plate(boxes, image)
+                except:
+                    print(f"Error getting ocr from image: {img}")
+                    ocr_results = ["N/A"]
+                    
+                row = [file_name] + ocr_results
+                results.append(row)
+                del image
+            results_seq += results
+            print(results)
+        pd.DataFrame(results_seq).to_csv(f"results_from_worker{self.id}.csv", index=False)
 
 def main():
     try:
