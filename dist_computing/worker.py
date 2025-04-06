@@ -10,10 +10,11 @@ import serpent
 
 @Pyro4.expose
 class Worker(object):
-    def __init__(self):
+    def __init__(self, id):
         self.model = YOLO("best.pt")
         self.reader = ocr.Reader(['en'])
         self.path_to_images = "/home/monm/mp/images/"
+        self.id = id
         self.images = []
         self.filenames = []
         return
@@ -24,6 +25,7 @@ class Worker(object):
             img = Image.open(io.BytesIO(img_bytes))
             self.filenames.append(filename)
             img.save(self.path + filename)
+            print(f"Image {filename} received and saved.")
             return f"Image received."
         except Exception as e:
             return f"Error receiving image: {e}"
@@ -94,12 +96,17 @@ def main():
     except:
         print("Error: Please provide a worker ID and Host IP as a command line argument.")
         return
-    daemon=Pyro4.Daemon(host=ip)
-    ns=Pyro4.locateNS("10.2.12.33", 9090)
-    uri=daemon.register(Worker)
-    ns.register(f"worker{id}", uri)
-    print(f"Worker-{id} Ready")
-    daemon.requestLoop()
-
+    
+    try:
+        worker = Worker(id)
+        daemon=Pyro4.Daemon(host=ip)
+        ns=Pyro4.locateNS("10.2.12.33", 9090)
+        uri=daemon.register(worker)
+        ns.register(f"worker{id}", uri)
+        print(f"Worker-{id} Ready")
+        daemon.requestLoop()
+    except Exception as e:
+        print(f"Error starting worker: {e}")
+        return
 if __name__ == "__main__":
     main()
