@@ -33,6 +33,7 @@ class Server(object):
                 if len(img_dir) == 0:
                     return "No images found in the directory."
                 else:
+                    self.image_directories = []
                     for each in img_dir:
                         if os.path.isfile(each):
                             self.image_directories.append(each)
