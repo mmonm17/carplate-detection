@@ -2,7 +2,8 @@ import Pyro4
 import os
 from PIL import Image
 import io
-import multiprocessing
+import threading
+import time
 @Pyro4.expose
 class Server(object):
     def __init__(self):
@@ -10,6 +11,8 @@ class Server(object):
         self.directory = ""
         self.worker_proxies = []
         self.image_directories = []
+        self.file_transfer_time = 0
+        self.inference_time = 0
         return
     
     def set_workers(self, workers):
@@ -41,22 +44,22 @@ class Server(object):
         except Exception as e:
             return f"Error getting images from {self.directory}: {e}"
         
-    def sending_function(proxy, dir, start, end, i):
-        for each_img_dir in dir[start:end]:
+    def sending_function(self, start, end, i, transfer_type):
+        for each_img_dir in self.image_directories[start:end]:
             try:
                 print(f"Reading {each_img_dir}")
                 img = Image.open(each_img_dir)
                 buffer = io.BytesIO()
-                img.save(buffer, format="PNG")
+                img.save(buffer, format=transfer_type)
                 img_buffer = buffer.getvalue()
                 filename = each_img_dir.split("/")[-1]
-                res = proxy.receive_image(img_buffer, filename)
+                res = self.worker_proxies[i].receive_image(img_buffer, filename)
                 print(f"Worker {i+1}: {res}")
             except Exception as e:
                 print(f"Error reading image {each_img_dir}: {e}")
                 continue
         
-    def send_image_files_to_workers(self):
+    def send_image_files_to_workers(self, transfer_type):
         if self.workers == 0:
             return "No workers set."
         if self.workers < 1 or self.workers > 2:
@@ -69,16 +72,20 @@ class Server(object):
         print(f"Total Number of Images: {len_dir}")
         print(f"Number of Workers: {self.workers}")
 
+        start_time = time.time()
         processes = []
         for i in range(self.workers):
             start = i * (len_dir // self.workers)
             end = (i + 1) * (len_dir // self.workers) if i != self.workers - 1 else len_dir
-            p = multiprocessing.Process(target=self.sending_function, args=(self.worker_proxies[i], self.image_directories, start, end, i))
+            p = threading.Thread(target=self.sending_function, args=(start, end, i, transfer_type))
             p.start()
             processes.append(p)
         
         for p in processes:
             p.join()
+        end_time = time.time()
+        self.file_transfer_time = end_time - start_time
+        print(f"File transfer time: {self.file_transfer_time} seconds")
             
         return f"Image files sent to workers."
         
@@ -108,14 +115,35 @@ class Server(object):
         if batch_size <= 0:
             return "Invalid batch size. Must be greater than 0."
         
+        start_time = time.time()
         processes = []
         for i in range(self.workers):
-            p = multiprocessing.Process(target=self.worker_proxies[i].predict, args=(batch_size,))
+            p = threading.Thread(target=self.worker_proxies[i].predict, args=(batch_size,))
             p.start()
             processes.append(p)
 
         for p in processes:
             p.join()
+        end_time = time.time()
+        self.inference_time = end_time - start_time
+        print(f"Inference time: {self.inference_time} seconds")
+
+    def get_inference_results(self):
+        if len(self.worker_proxies) == 0:
+            return "No workers available."
+        
+        results = []
+        for i in range(self.workers):
+            try:
+                res = self.worker_proxies[i].send_results()
+                results.append((i+1, res))
+            except Exception as e:
+                print(f"Error getting results from worker {i+1}: {e}")
+                continue
+        return results
+    
+    def send_time(self):
+        return self.file_transfer_time, self.inference_time
     
 def main():
     daemon=Pyro4.Daemon(host="10.2.12.33")

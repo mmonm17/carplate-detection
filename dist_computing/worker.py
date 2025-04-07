@@ -101,6 +101,13 @@ class Worker(object):
             print(results)
         pd.DataFrame(results_seq).to_csv(f"results_from_worker{self.id}.csv", index=False)
 
+    def send_results(self):
+        try:
+            df = pd.read_csv(f"results_from_worker{self.id}.csv")
+            return df.to_numpy().tolist()
+        except Exception as e:
+            return f"Error sending results: {e}"
+
 def main():
     try:
         id = sys.argv[1]
