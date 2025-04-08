@@ -10,7 +10,8 @@ def print_commands():
     print("[5] Run Plate Recognition")
     print("[6] Get Inference Results")
     print("[7] Compute Computation Statistics")
-    print("[8] Exit")
+    print("[8] Delete Images in Workers")
+    print("[9] Exit")
     print("Please enter a command: ", end="")
 
 def main():
@@ -22,10 +23,10 @@ def main():
         print_commands()
         try:
             command = int(input())
-            if command < 1 or command > 8:
+            if command < 1 or command > 9:
                 print("Invalid command. Please try again.")
                 continue
-            if command == 8:
+            if command == 9:
                 print("Exiting...")
                 break
             if command == 1: # Set Num of Workers
@@ -98,6 +99,13 @@ def main():
                     print("Statistics saved to statistics.txt")
                 except Exception as e:
                     print(f"Error computing statistics: {e}")
+                    continue
+            elif command == 8:
+                try:
+                    res = server.delete_image_files()
+                    print(res)
+                except Exception as e:
+                    print(f"Error deleting images: {e}")
                     continue
         except ValueError:
             print("Invalid input. Please enter a number.")

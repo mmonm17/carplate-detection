@@ -3,7 +3,7 @@ import sys
 import easyocr as ocr
 from ultralytics import YOLO
 import cv2
-import os
+import os, shutil
 import io
 from PIL import Image
 import serpent
@@ -68,9 +68,12 @@ class Worker(object):
             return
         
         img_dir = [self.path_to_images + x for x in img_files]
-
-        iters = len(img_dir) // batch_size
-
+        print(f"Predicting {len(img_dir)} images...")
+        
+        if len(img_dir) / batch_size != len(img_dir) // batch_size:
+            iters = 1 + len(img_dir) // batch_size
+        else:
+            iters = len(img_dir) // batch_size
         results_seq = []
         for i in range(iters):
             start = i * batch_size
@@ -100,6 +103,7 @@ class Worker(object):
             results_seq += results
             print(results)
         pd.DataFrame(results_seq).to_csv(f"results_from_worker{self.id}.csv", index=False)
+        print(f"Prediction completed for {len(img_dir)} images.")
 
     def send_results(self):
         try:
@@ -107,6 +111,14 @@ class Worker(object):
             return df.to_numpy().tolist()
         except Exception as e:
             return f"Error sending results: {e}"
+        
+    def delete_image_files(self):
+        try:
+            for each in os.listdir(self.path_to_images):
+                os.remove(os.path.join(self.path_to_images, each))
+            return f"Image files deleted."
+        except Exception as e:
+            return f"Error deleting image files: {e}"
 
 def main():
     try:

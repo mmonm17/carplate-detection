@@ -73,21 +73,23 @@ class Server(object):
         print(f"Number of Workers: {self.workers}")
 
         start_time = time.time()
+        images_per_worker = len_dir // self.workers
         processes = []
         for i in range(self.workers):
-            start = i * (len_dir // self.workers)
-            end = (i + 1) * (len_dir // self.workers) if i != self.workers - 1 else len_dir
+            start = i * (images_per_worker)
+            end = (i + 1) * (images_per_worker) if i != self.workers - 1 else len_dir
             p = threading.Thread(target=self.sending_function, args=(start, end, i, transfer_type))
             p.start()
             processes.append(p)
         
         for p in processes:
             p.join()
+
         end_time = time.time()
         self.file_transfer_time = end_time - start_time
         print(f"File transfer time: {self.file_transfer_time} seconds")
             
-        return f"Image files sent to workers."
+        return f"{images_per_worker} image files sent to each worker."
         
     def get_workers(self):
         try:
@@ -126,7 +128,7 @@ class Server(object):
             p.join()
         end_time = time.time()
         self.inference_time = end_time - start_time
-        print(f"Inference time: {self.inference_time} seconds")
+        return f"Inference time: {self.inference_time} seconds"
 
     def get_inference_results(self):
         if len(self.worker_proxies) == 0:
@@ -144,6 +146,17 @@ class Server(object):
     
     def send_time(self):
         return self.file_transfer_time, self.inference_time
+    
+    def delete_image_files(self):
+        if len(self.worker_proxies) == 0:
+            return "No workers available."
+        for i in range(self.workers):
+            try:
+                self.worker_proxies[i].delete_image_files()
+            except Exception as e:
+                print(f"Error deleting image files from worker {i+1}: {e}")
+                continue
+        return "Image files deleted."
     
 def main():
     daemon=Pyro4.Daemon(host="10.2.12.33")
